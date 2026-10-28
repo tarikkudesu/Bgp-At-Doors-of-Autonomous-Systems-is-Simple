@@ -1,0 +1,56 @@
+---
+- name: Install GNS3
+  hosts: localhost
+  connection: local
+  become: true
+
+  tasks:
+    - name: Add the GNS3 PPA
+      ansible.builtin.apt_repository:
+        repo: ppa:gns3/ppa
+
+    - name: Preseed setuid prompts so the install is non-interactive
+      ansible.builtin.debconf:
+        name: "{{ item }}"
+        question: "{{ item }}/install-setuid"
+        vtype: boolean
+        value: "true"
+      loop: [ubridge, wireshark-common]
+
+    - name: Install GNS3
+      ansible.builtin.apt:
+        name: [gns3-gui, gns3-server]
+        update_cache: true
+
+    - name: Let the current user run ubridge
+      ansible.builtin.user:
+        name: "{{ lookup('ansible.builtin.env', 'USER') }}"
+        groups: ubridge
+        append: true
+    # logout and login again so that group membership takes effect
+
+    - name: Get Docker script
+      ansible.builtin.get_url:
+        url: https://get.docker.com
+        dest: /tmp/install-docker.sh
+        mode: "0755"
+
+    - name: Dry run Docker script
+      ansible.builtin.command: sh /tmp/install-docker.sh --dry-run
+      register: docker_dry_run
+      changed_when: false
+
+    - name: Show dry run output
+      ansible.builtin.debug:
+        var: docker_dry_run.stdout_lines
+
+    - name: Run Docker install script
+      ansible.builtin.command: sh /tmp/install-docker.sh
+      args:
+        creates: /usr/bin/docker
+
+    - name: Ensure Docker is running
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
