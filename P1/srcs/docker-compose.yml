@@ -5,7 +5,9 @@ services:
   host:
     image: host_${LOGIN}:tar
     container_name: host-${LOGIN}
-    build: ./host
+    build:
+      context: ./host
+      network: host
     network_mode: none
     stdin_open: true
     tty: true
@@ -15,7 +17,9 @@ services:
   router:
     image: router_${LOGIN}:tar
     container_name: router-${LOGIN}
-    build: ./router
+    build:
+      context: ./router
+      network: host
     network_mode: none
     cap_add:
       - NET_ADMIN
